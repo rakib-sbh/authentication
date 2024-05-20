@@ -1,1 +1,1 @@
-## Authentication for Express Application. Using various authentication strategies for express app.
+## Using [bcryptjs](https://www.npmjs.com/package/bcrypt) for authentication
