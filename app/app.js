@@ -1,8 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const mongoose = require("mongoose");
 require("dotenv").config();
+const bcrypt = require("bcrypt");
 
 const User = require("../models/user.model");
 const connectDB = require("../db/db");
@@ -19,41 +19,55 @@ connectDB(process.env.MONGO_URI);
 
 app.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
-  const newUser = new User({
-    name,
-    email,
-    password,
-  });
-
-  const result = await User.findOne({ email });
-
-  if (result) {
-    res.status(201).json({
-      message: "User already registered.",
+  try {
+    const hashPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({
+      name,
+      email,
+      password: hashPassword,
     });
-  } else {
-    await newUser.save();
-    res.json({
-      message: "User already registered",
-      newUser,
-    });
+    const result = await User.findOne({ email });
+    if (result) {
+      res.status(201).json({
+        message: "User already registered.",
+      });
+    } else {
+      await newUser.save();
+      res.json({
+        message: "User already registered",
+        newUser,
+      });
+    }
+  } catch (error) {
+    throw new Error(error.message);
   }
 });
 
 app.post("/login", async (req, res) => {
-  const { name, password } = req.body;
+  const { email, password } = req.body;
 
-  const result = await User.findOne({ name, password });
+  try {
+    const user = await User.findOne({ email });
+    if (user) {
+      const isMatch = await bcrypt.compare(password, user.password);
 
-  if (result) {
-    res.status(200).json({
-      message: "Login Successful",
-      result,
-    });
-  } else {
-    res.status(403).json({
-      message: "Authentication failed",
-    });
+      if (isMatch) {
+        res.status(200).json({
+          message: "Login Successful",
+          user,
+        });
+      } else {
+        res.status(403).json({
+          message: "Authentication failed",
+        });
+      }
+    } else {
+      res.status(403).json({
+        message: "Authentication failed",
+      });
+    }
+  } catch (error) {
+    throw Error(error.message);
   }
 });
 
