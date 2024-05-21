@@ -39,32 +39,6 @@ connectDB(process.env.MONGO_URI);
 
 //* ROUTES
 
-app.get("/register", (req, res) => {
-  res.render("register");
-});
-
-app.post("/register", async (req, res) => {
-  const { name, email, password } = req.body;
-
-  try {
-    const hashPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({
-      name,
-      email,
-      password: hashPassword,
-    });
-    const result = await User.findOne({ email });
-    if (result) {
-      res.status(201).redirect("/login");
-    } else {
-      await newUser.save();
-      res.redirect("/login");
-    }
-  } catch (error) {
-    throw new Error(error.message);
-  }
-});
-
 const checkLoggedIn = (req, res, next) => {
   if (req.isAuthenticated()) {
     return res.redirect("/profile");
@@ -86,35 +60,23 @@ app.post(
   })
 );
 
-//! LOGIN - POST
-// app.post("/login", async (req, res) => {
-//   const { email, password } = req.body;
-//   console.log(email, password);
+//! authenticate using google
+app.get(
+  "/auth/google",
+  passport.authenticate("google", { scope: ["profile"] })
+);
 
-//   try {
-//     const user = await User.findOne({ email });
-//     if (user) {
-//       const isMatch = await bcrypt.compare(password, user.password);
-
-//       if (isMatch) {
-//         res.status(200).json({
-//           message: "Login Successful",
-//           user,
-//         });
-//       } else {
-//         res.status(403).json({
-//           message: "Authentication failed",
-//         });
-//       }
-//     } else {
-//       res.status(403).json({
-//         message: "Authentication failed",
-//       });
-//     }
-//   } catch (error) {
-//     throw Error(error.message);
-//   }
-// });
+app.get(
+  "/auth/google/callback",
+  passport.authenticate("google", {
+    failureRedirect: "/login",
+    successRedirect: "/profile",
+  }),
+  (req, res) => {
+    // Successful authentication, redirect home.
+    res.redirect("/");
+  }
+);
 
 const checkAuthenticated = (req, res, next) => {
   if (req.isAuthenticated()) {
@@ -125,7 +87,7 @@ const checkAuthenticated = (req, res, next) => {
 };
 
 app.get("/profile", checkAuthenticated, (req, res) => {
-  res.render("profile");
+  res.render("profile", { username: req.user.username });
 });
 
 app.get("/logout", (req, res, next) => {
